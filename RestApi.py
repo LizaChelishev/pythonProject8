@@ -13,7 +13,7 @@ import uuid
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'thisissecret'
 
-dao = RestData('rest_api_project.db')
+dao = RestData('rest_api_project_db.db')
 logger = Logger.get_instance()
 
 

@@ -1,14 +1,14 @@
 from Customer import Customer
 from User import User
 from Logger import Logger
-import SQLAlchemy
+import sqlite3
 
 
 class RestData:
 
     def __init__(self, db_file_path):
         self.db_file_path = db_file_path
-        self.con = SQLAlchemy.connect(db_file_path, check_same_thread=False)
+        self.con = sqlite3.connect(db_file_path, check_same_thread=False)
         self.db_cursor = self.con.cursor()
         self.logger = Logger.get_instance()
 
