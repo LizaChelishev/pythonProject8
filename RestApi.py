@@ -27,15 +27,16 @@ def token_required(f):
             token = token.removeprefix('Bearer ')
 
         if not token:
-            logger.logger.info('A user tried to used a function that requires token but token is missing.')
-            return jsonify({'message': 'Token is missing'}), 401
+            logger.logger.info('Missing credentials: missing Authorization header, missing token, missing Bearer '
+                               'prefix.')
+            return jsonify({'message': 'Token not found'}), 401
 
         try:
             payload = jwt.decode(token, app.config['SECRET_KEY'])
             user = dao.get_user_by_public_id(payload['public_id'])
         except:
-            logger.logger.warning('A user tried to used a function that requires token but token is not valid.')
-            return jsonify({'message': 'Token is not valid'}), 401
+            logger.logger.warning('Expired credentials: expired token')
+            return jsonify({'message': 'Invalid Token'}), 401
 
         return f(user, *args, **kwargs)
 
@@ -46,7 +47,7 @@ def token_required(f):
 def home():
     return '''
         <html>
-            Best home page!
+            Welcome!
         </html>
     '''
 
@@ -64,7 +65,27 @@ def get_or_post_customer(user):
         answer = dao.insert_new_customer(inserted_customer)
         if answer:
             logger.logger.info(f'New customer: "{inserted_customer}" has been created by the user "{user}"!')
-            return make_response('Customer Created!', 201)
+            return make_response('Customer was created successfully', 201)
+        else:
+            logger.logger.error(f'The user: "{user}" tried to insert new customer but did not sent both "name" and '
+                                f'"city"')
+            return jsonify({'answer': 'failed'})
+
+
+@app.route('/customers', methods=['GET', 'POST'])
+@token_required
+def get_or_post_customer(user):
+    if request.method == 'GET':
+        search_args = request.args.to_dict()
+        customers = dao.get_all_customers(search_args)
+        return jsonify(customers)
+    if request.method == 'POST':
+        customer_data = request.get_json()
+        inserted_customer = Customer(id_=None, name=customer_data["name"], city=customer_data["city"])
+        answer = dao.insert_new_customer(inserted_customer)
+        if answer:
+            logger.logger.info(f'New customer: "{inserted_customer}" has been created by the user "{user}"!')
+            return make_response('Customer was created successfully', 201)
         else:
             logger.logger.error(f'The user: "{user}" tried to insert new customer but did not sent both "name" and '
                                 f'"city"')
@@ -82,7 +103,7 @@ def get_customer_by_id(user, id_):
         answer = dao.update_put_customer(id_, values_dict)
         if answer:
             logger.logger.info(f'The customer with the id: {id_} has been updated by the user "{user}"!')
-            return make_response('Put done!', 201)
+            return make_response('Put action was done!', 201)
         else:
             logger.logger.error(f'The user "{user}" tried to update a customer that his id: "{id_}" '
                                 f'not exists in the db.')
@@ -91,7 +112,7 @@ def get_customer_by_id(user, id_):
         answer = dao.delete_customer(id_)
         if answer:
             logger.logger.info(f'The customer with the id: {id_} has been deleted by the user "{user}"!')
-            return make_response('Delete done!', 201)
+            return make_response('Delete action was done!', 201)
         else:
             logger.logger.error(f'The user "{user}" tried to delete a customer that his id: "{id_}" '
                                 f'not exists in the db.')
@@ -101,7 +122,7 @@ def get_customer_by_id(user, id_):
         answer = dao.update_patch_customer(id_, values_dict)
         if answer:
             logger.logger.info(f'The customer with the id: {id_} has been updated by the user "{user}"!')
-            return make_response('Patch done!', 201)
+            return make_response('Patch action was done!', 201)
         else:
             logger.logger.info(f'The user "{user}" tried to update a customer that his id: "{id_}" '
                                f'not exists in the db.')
@@ -135,7 +156,7 @@ def login():
     form_data = request.form
 
     if not form_data or not form_data.get('username') or not form_data.get('password'):
-        logger.logger.info('A user tried to login without sending the required data(username, password)')
+        logger.logger.info('A user tried to login without sending the required info(username, password)')
         return make_response('Could not verify', 401, {'WWW-Authenticate': 'Basic realm="Login required."'})
 
     user = dao.get_user_by_username(form_data.get('username'))
